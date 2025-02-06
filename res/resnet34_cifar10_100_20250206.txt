@@ -1,0 +1,104 @@
+Average CE Loss: 0.8534
+Average BSD Loss: 0.3043
+Top-1 Accuracy: 80.01%
+Best Top-1 Accuracy: 80.38%
+
+100%|█████████████████████████████████████████████████| 97/97 [03:59<00:00,  2.47s/it]
+Evaluating: 100%|█████████████████████████████████████| 79/79 [01:00<00:00,  1.31it/s]
+Epoch: 191
+Learning Rate: 0.000249
+Average Loss: 1.1511
+Average CE Loss: 0.8493
+Average BSD Loss: 0.3017
+Top-1 Accuracy: 80.17%
+Best Top-1 Accuracy: 80.38%
+
+100%|█████████████████████████████████████████████████| 97/97 [03:58<00:00,  2.46s/it]
+Evaluating: 100%|█████████████████████████████████████| 79/79 [00:59<00:00,  1.33it/s]
+Epoch: 192
+Learning Rate: 0.000197
+Average Loss: 1.1437
+Average CE Loss: 0.8442
+Average BSD Loss: 0.2995
+Top-1 Accuracy: 79.86%
+Best Top-1 Accuracy: 80.38%
+
+100%|█████████████████████████████████████████████████| 97/97 [03:57<00:00,  2.45s/it]
+Evaluating: 100%|█████████████████████████████████████| 79/79 [00:59<00:00,  1.33it/s]
+Epoch: 193
+Learning Rate: 0.000151
+Average Loss: 1.1634
+Average CE Loss: 0.8463
+Average BSD Loss: 0.3171
+Top-1 Accuracy: 80.45%
+Best Top-1 Accuracy: 80.45%
+
+100%|█████████████████████████████████████████████████| 97/97 [03:57<00:00,  2.45s/it]
+Evaluating: 100%|█████████████████████████████████████| 79/79 [00:59<00:00,  1.32it/s]
+Epoch: 194
+Learning Rate: 0.000111
+Average Loss: 1.1590
+Average CE Loss: 0.8460
+Average BSD Loss: 0.3130
+Top-1 Accuracy: 80.17%
+Best Top-1 Accuracy: 80.45%
+
+100%|█████████████████████████████████████████████████| 97/97 [03:57<00:00,  2.45s/it]
+Evaluating: 100%|█████████████████████████████████████| 79/79 [00:59<00:00,  1.33it/s]
+Epoch: 195
+Learning Rate: 0.000077
+Average Loss: 1.1613
+Average CE Loss: 0.8521
+Average BSD Loss: 0.3092
+Top-1 Accuracy: 80.57%
+Best Top-1 Accuracy: 80.57%
+
+100%|█████████████████████████████████████████████████| 97/97 [03:58<00:00,  2.45s/it]
+Evaluating: 100%|█████████████████████████████████████| 79/79 [01:00<00:00,  1.31it/s]
+Epoch: 196
+Learning Rate: 0.000049
+Average Loss: 1.1526
+Average CE Loss: 0.8417
+Average BSD Loss: 0.3109
+Top-1 Accuracy: 80.24%
+Best Top-1 Accuracy: 80.57%
+
+100%|█████████████████████████████████████████████████| 97/97 [03:58<00:00,  2.46s/it]
+Evaluating: 100%|█████████████████████████████████████| 79/79 [00:59<00:00,  1.32it/s]
+Epoch: 197
+Learning Rate: 0.000028
+Average Loss: 1.1649
+Average CE Loss: 0.8431
+Average BSD Loss: 0.3218
+Top-1 Accuracy: 80.36%
+Best Top-1 Accuracy: 80.57%
+
+100%|█████████████████████████████████████████████████| 97/97 [03:58<00:00,  2.46s/it]
+Evaluating: 100%|█████████████████████████████████████| 79/79 [00:59<00:00,  1.32it/s]
+Epoch: 198
+Learning Rate: 0.000012
+Average Loss: 1.1502
+Average CE Loss: 0.8394
+Average BSD Loss: 0.3108
+Top-1 Accuracy: 80.37%
+Best Top-1 Accuracy: 80.57%
+
+100%|█████████████████████████████████████████████████| 97/97 [03:56<00:00,  2.44s/it]
+Evaluating: 100%|█████████████████████████████████████| 79/79 [00:59<00:00,  1.32it/s]
+Epoch: 199
+Learning Rate: 0.000003
+Average Loss: 1.1498
+Average CE Loss: 0.8421
+Average BSD Loss: 0.3077
+Top-1 Accuracy: 80.68%
+Best Top-1 Accuracy: 80.68%
+
+100%|█████████████████████████████████████████████████| 97/97 [03:57<00:00,  2.44s/it]
+Evaluating: 100%|█████████████████████████████████████| 79/79 [00:58<00:00,  1.34it/s]
+Epoch: 200
+Learning Rate: 0.000000
+Average Loss: 1.1538
+Average CE Loss: 0.8367
+Average BSD Loss: 0.3171
+Top-1 Accuracy: 80.74%
+Best Top-1 Accuracy: 80.74%
