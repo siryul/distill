@@ -1,0 +1,15 @@
+{
+  "device": "cuda",
+  "num_classes": 10,
+  "imbalance_factor": 10,
+  "batch_size": 128,
+  "num_workers": 2,
+  "num_epochs": 200,
+  "initial_lr": 0.1,
+  "momentum": 0.9,
+  "weight_decay": 0.0005,
+  "alpha": 1.0,
+  "lambda_bsd": 1.0,
+  "log_dir": "res",
+  "cfg": "cifar10_imb10.yaml"
+}

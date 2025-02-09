@@ -9,6 +9,34 @@ import numpy as np
 from tqdm import tqdm
 from resnet import resnet32
 from sampler import LongTailDistributionSampler
+import os
+import json
+from datetime import datetime
+from sklearn.metrics import confusion_matrix, classification_report
+import yaml
+import argparse
+
+
+def load_config(args):
+  # 设置默认配置文件名
+  cfg = args.cfg if args.cfg else f'cifar10_imb{args.imbalance_factor}.yaml'
+  config_path = os.path.join('config', cfg)
+
+  # 如果指定的配置文件不存在，使用默认配置
+  if not os.path.exists(config_path):
+    config_path = 'config/default.yaml'
+    print(f'警告：配置文件 {cfg} 不存在，使用默认配置文件')
+
+  # 加载配置
+  with open(config_path, 'r') as f:
+    config = yaml.safe_load(f)
+
+  # 使用命令行参数覆盖配置
+  for key, value in vars(args).items():
+    if value is not None:
+      config[key] = value
+
+  return config
 
 
 def get_class_counts(dataset):
@@ -21,6 +49,8 @@ def evaluate(model, test_loader, device):
   model.eval()
   correct = 0
   total = 0
+  all_preds = []
+  all_targets = []
 
   with torch.no_grad():
     for data, target in tqdm(test_loader, desc='Evaluating'):
@@ -35,8 +65,18 @@ def evaluate(model, test_loader, device):
       total += target.size(0)
       correct += (predicted == target).sum().item()
 
+      # 收集预测结果和真实标签
+      all_preds.extend(predicted.cpu().numpy())
+      all_targets.extend(target.cpu().numpy())
+
+  # 计算整体准确率
   accuracy = 100 * correct / total
-  return accuracy
+
+  # 计算每个类别的性能指标
+  conf_matrix = confusion_matrix(all_targets, all_preds)
+  class_report = classification_report(all_targets, all_preds, output_dict=True)
+
+  return accuracy, conf_matrix, class_report
 
 
 def train(model, train_loader, optimizer, device, class_counts):
@@ -73,8 +113,34 @@ def train(model, train_loader, optimizer, device, class_counts):
 
 
 def main():
+  # 解析命令行参数
+  parser = argparse.ArgumentParser(description='Training script for Balanced Self-Distillation')
+  parser.add_argument('--cfg', type=str, help='配置文件名称，例如：cifar10_imb100.yaml')
+  parser.add_argument('--device', type=str, help='Training device (cuda/cpu)')
+  parser.add_argument('--num_classes', type=int, help='Number of classes')
+  parser.add_argument('--imbalance_factor', type=int, help='Imbalance factor')
+  parser.add_argument('--batch_size', type=int, help='Batch size')
+  parser.add_argument('--num_workers', type=int, help='Number of workers')
+  parser.add_argument('--num_epochs', type=int, help='Number of epochs')
+  parser.add_argument('--initial_lr', type=float, help='Initial learning rate')
+  parser.add_argument('--momentum', type=float, help='Momentum')
+  parser.add_argument('--weight_decay', type=float, help='Weight decay')
+  parser.add_argument('--alpha', type=float, help='Alpha parameter')
+  parser.add_argument('--lambda_bsd', type=float, help='Lambda BSD parameter')
+  parser.add_argument('--log_dir', type=str, help='Log directory')
+
+  args = parser.parse_args()
+
+  # 加载配置
+  config = load_config(args)
+
+  # 创建日志目录
+  timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+  log_dir = os.path.join(config['log_dir'], f'train_log_{timestamp}')
+  os.makedirs(log_dir, exist_ok=True)
+
   # 设置设备
-  device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+  device = torch.device(config['device'] if torch.cuda.is_available() else 'cpu')
 
   # 加载数据集
   transform = transforms.Compose([transforms.ToTensor()])
@@ -83,12 +149,24 @@ def main():
   test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 
   # 创建长尾分布采样器
-  sampler = LongTailDistributionSampler(train_dataset, num_classes=10, imbalance_factor=100)
-  train_loader = DataLoader(train_dataset, batch_size=128, sampler=sampler, num_workers=2)
-  test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=2)
+  sampler = LongTailDistributionSampler(train_dataset,
+                                        num_classes=config['num_classes'],
+                                        imbalance_factor=config['imbalance_factor'])
+  train_loader = DataLoader(train_dataset,
+                            batch_size=config['batch_size'],
+                            sampler=sampler,
+                            num_workers=config['num_workers'])
+  test_loader = DataLoader(test_dataset,
+                           batch_size=config['batch_size'],
+                           shuffle=False,
+                           num_workers=config['num_workers'])
 
   # 获取类别样本数量
   class_counts = sampler.target_counts
+
+  # 保存配置到JSON文件
+  with open(os.path.join(log_dir, 'config.json'), 'w') as f:
+    json.dump(config, f, indent=2)
 
   # 打印每个类别的样本数量
   print("\n类别样本数量统计:")
@@ -97,21 +175,24 @@ def main():
   print()
 
   # 初始化模型
-  backbone = resnet32(num_classes=10)
-  model = BalancedSelfDistillation(backbone=backbone, num_classes=10, alpha=1.0,
-                                   lambda_bsd=1.0).to(device)
-
-  # 初始化训练参数
-  num_epochs = 200
+  backbone = resnet32(num_classes=config['num_classes'])
+  model = BalancedSelfDistillation(backbone=backbone,
+                                   num_classes=config['num_classes'],
+                                   alpha=config['alpha'],
+                                   lambda_bsd=config['lambda_bsd']).to(device)
 
   # 设置优化器和学习率调度器
-  optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
-  scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+  optimizer = optim.SGD(model.parameters(),
+                        lr=config['initial_lr'],
+                        momentum=config['momentum'],
+                        weight_decay=config['weight_decay'])
+  scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config['num_epochs'])
 
   # 训练循环
   best_accuracy = 0.0
+  training_log = []
 
-  for epoch in range(num_epochs):
+  for epoch in range(config['num_epochs']):
     avg_loss, avg_ce_loss, avg_bsd_loss = train(model, train_loader, optimizer, device,
                                                 class_counts)
 
@@ -120,10 +201,28 @@ def main():
     current_lr = scheduler.get_last_lr()[0]
 
     # 评估模型
-    accuracy = evaluate(model, test_loader, device)
+    accuracy, conf_matrix, class_report = evaluate(model, test_loader, device)
 
     # 更新最佳准确率
     best_accuracy = max(best_accuracy, accuracy)
+
+    # 记录本轮训练信息
+    epoch_info = {
+      'epoch': epoch + 1,
+      'learning_rate': current_lr,
+      'avg_loss': avg_loss,
+      'avg_ce_loss': avg_ce_loss,
+      'avg_bsd_loss': avg_bsd_loss,
+      'accuracy': accuracy,
+      'best_accuracy': best_accuracy,
+      'confusion_matrix': conf_matrix.tolist(),
+      'class_report': class_report
+    }
+    training_log.append(epoch_info)
+
+    # 保存训练日志
+    with open(os.path.join(log_dir, 'training_log.json'), 'w') as f:
+      json.dump(training_log, f, indent=2)
 
     print(f'Epoch: {epoch+1}')
     print(f'Learning Rate: {current_lr:.6f}')
@@ -132,6 +231,12 @@ def main():
     print(f'Average BSD Loss: {avg_bsd_loss:.4f}')
     print(f'Top-1 Accuracy: {accuracy:.2f}%')
     print(f'Best Top-1 Accuracy: {best_accuracy:.2f}%\n')
+
+    # 每个epoch结束后保存当前混淆矩阵
+    np.save(os.path.join(log_dir, f'confusion_matrix_epoch_{epoch+1}.npy'), conf_matrix)
+
+  # 保存最终模型
+  torch.save(model.state_dict(), os.path.join(log_dir, 'final_model.pth'))
 
 
 if __name__ == '__main__':

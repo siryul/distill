@@ -1,0 +1,21 @@
+# 训练设备配置
+device: cuda
+
+# 数据集配置
+num_classes: 10
+imbalance_factor: 100
+batch_size: 128
+num_workers: 2
+
+# 训练参数
+num_epochs: 200
+initial_lr: 0.1
+momentum: 0.9
+weight_decay: 5.0e-4
+
+# 模型参数
+alpha: 1.0
+lambda_bsd: 1.0
+
+# 日志配置
+log_dir: res
