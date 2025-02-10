@@ -35,8 +35,9 @@ class BalancedSelfDistillation(nn.Module):
   def forward(self, x):
     # 应用弱增强和强增强到每个图像
     batch_size = x.size(0)
-    x_weak = torch.stack([self.weak_aug(x[i]) for i in range(batch_size)])
-    x_strong = torch.stack([self.strong_aug(x[i]) for i in range(batch_size)])
+    device = x.device
+    x_weak = torch.stack([self.weak_aug(x[i]) for i in range(batch_size)]).to(device)
+    x_strong = torch.stack([self.strong_aug(x[i]) for i in range(batch_size)]).to(device)
 
     # 获取模型输出
     z_weak = self.backbone(x_weak)
