@@ -51,6 +51,8 @@ def evaluate(model, test_loader, device):
   total = 0
   all_preds = []
   all_targets = []
+  class_correct = {}
+  class_total = {}
 
   with torch.no_grad():
     for data, target in tqdm(test_loader, desc='Evaluating'):
@@ -69,14 +71,46 @@ def evaluate(model, test_loader, device):
       all_preds.extend(predicted.cpu().numpy())
       all_targets.extend(target.cpu().numpy())
 
+      # 统计每个类别的正确预测数和总样本数
+      for t, p in zip(target.cpu().numpy(), predicted.cpu().numpy()):
+        if t not in class_correct:
+          class_correct[t] = 0
+          class_total[t] = 0
+        class_total[t] += 1
+        if t == p:
+          class_correct[t] += 1
+
   # 计算整体准确率
   accuracy = 100 * correct / total
+
+  # 计算每个类别的准确率
+  class_accuracies = {}
+  for class_idx in class_total.keys():
+    class_accuracies[class_idx] = 100 * class_correct[class_idx] / class_total[class_idx]
+
+  # 根据测试集中的样本数量将类别分为many-shot（>100）、medium-shot（20-100）和few-shot（<20）
+  many_shot_classes = []
+  medium_shot_classes = []
+  few_shot_classes = []
+
+  for class_idx, count in class_total.items():
+    if count > 100:
+      many_shot_classes.append(class_idx)
+    elif count >= 20:
+      medium_shot_classes.append(class_idx)
+    else:
+      few_shot_classes.append(class_idx)
+
+  # 计算many-shot、medium-shot和few-shot类别的平均准确率
+  many_shot_acc = np.mean([class_accuracies[c] for c in many_shot_classes])
+  medium_shot_acc = np.mean([class_accuracies[c] for c in medium_shot_classes])
+  few_shot_acc = np.mean([class_accuracies[c] for c in few_shot_classes])
 
   # 计算每个类别的性能指标
   conf_matrix = confusion_matrix(all_targets, all_preds)
   class_report = classification_report(all_targets, all_preds, output_dict=True)
 
-  return accuracy, conf_matrix, class_report
+  return accuracy, conf_matrix, class_report, many_shot_acc, medium_shot_acc, few_shot_acc
 
 
 def train(model, train_loader, optimizer, device, class_counts):
@@ -145,8 +179,10 @@ def main():
   # 加载数据集
   transform = transforms.Compose([transforms.ToTensor()])
 
-  train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-  test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+  # 根据num_classes选择加载CIFAR10或CIFAR100数据集
+  dataset_class = datasets.CIFAR100 if config['num_classes'] == 100 else datasets.CIFAR10
+  train_dataset = dataset_class(root='./data', train=True, download=True, transform=transform)
+  test_dataset = dataset_class(root='./data', train=False, download=True, transform=transform)
 
   # 创建长尾分布采样器
   sampler = LongTailDistributionSampler(train_dataset,
@@ -186,7 +222,7 @@ def main():
                         lr=config['initial_lr'],
                         momentum=config['momentum'],
                         weight_decay=config['weight_decay'])
-  scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config['num_epochs'])
+  scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[160, 180], gamma=0.1)
 
   # 训练循环
   best_accuracy = 0.0
@@ -201,7 +237,8 @@ def main():
     current_lr = scheduler.get_last_lr()[0]
 
     # 评估模型
-    accuracy, conf_matrix, class_report = evaluate(model, test_loader, device)
+    accuracy, conf_matrix, class_report, many_shot_acc, medium_shot_acc, few_shot_acc = evaluate(
+      model, test_loader, device)
 
     # 更新最佳准确率
     best_accuracy = max(best_accuracy, accuracy)
@@ -215,6 +252,9 @@ def main():
       'avg_bsd_loss': avg_bsd_loss,
       'accuracy': accuracy,
       'best_accuracy': best_accuracy,
+      'many_shot_accuracy': many_shot_acc,
+      'medium_shot_accuracy': medium_shot_acc,
+      'few_shot_accuracy': few_shot_acc,
       'confusion_matrix': conf_matrix.tolist(),
       'class_report': class_report
     }
@@ -230,6 +270,9 @@ def main():
     print(f'Average CE Loss: {avg_ce_loss:.4f}')
     print(f'Average BSD Loss: {avg_bsd_loss:.4f}')
     print(f'Top-1 Accuracy: {accuracy:.2f}%')
+    print(f'Many-shot Accuracy: {many_shot_acc:.2f}%')
+    print(f'Medium-shot Accuracy: {medium_shot_acc:.2f}%')
+    print(f'Few-shot Accuracy: {few_shot_acc:.2f}%')
     print(f'Best Top-1 Accuracy: {best_accuracy:.2f}%\n')
 
     # 每个epoch结束后保存当前混淆矩阵
