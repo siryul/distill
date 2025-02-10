@@ -54,6 +54,8 @@ class BalancedSelfDistillation(nn.Module):
     weights = torch.tensor(weights)
     # 归一化权重
     weights = weights / weights.sum() * len(class_counts)
+    # 将权重移动到与模型相同的设备上
+    weights = weights.to(self.backbone.linear.weight.device)
     return weights
 
   def compute_bsd_loss(self, p_weak, p_strong, class_weights=None, labels=None, temperature=2.0):
